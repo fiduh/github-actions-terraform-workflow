@@ -1,0 +1,176 @@
+name:  Terraform Workflow   					#workflow
+on:                                   
+  push: {}
+  pull_request: {}
+  workflow_dispatch : {}
+
+permissions:
+  id-token: write # required for requesting the JWT 
+  pull-requests: read
+  contents: read
+
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest		 #Runner
+    outputs:
+      all-changes: ${{ steps.changed-files.outputs.all_changed_files }}
+      matrix-input-data: ${{ steps.create-matrix.outputs.matrix }}
+    
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+    
+    - name: Run changed-files with dir_names
+      id: changed-files
+      uses: tj-actions/changed-files@v45
+      with:
+        files: |
+            **.tf
+            environments/**.tf
+        dir_names: true
+        matrix: true
+    
+    
+    
+    - name: Detect Changes
+      id: detect-changes
+      run: |
+        MATRIX_ENTRIES=()
+
+        # Get the output of changed folders
+        CHANGED_FOLDERS="${{ steps.changed-files.outputs.all_changed_files }}"
+        echo "Raw changed folders output: $CHANGED_FOLDERS"
+
+        # Remove square brackets and split the folders into an array
+        CLEANED_CHANGED_FOLDERS="${CHANGED_FOLDERS//[\[\]]/}"
+        IFS=',' read -r -a CHANGED_FOLDERS_ARRAY <<< "$CLEANED_CHANGED_FOLDERS"
+
+        # Loop through the cleaned folders and build matrix entries
+        for folder in "${CHANGED_FOLDERS_ARRAY[@]}"; do
+          folder=$(echo "$folder" | xargs) # Trim whitespace
+          if [[ -n "$folder" ]]; then
+            ENV_NAME=$(basename "$(dirname "$folder")") # Extract the environment name from the path
+            MATRIX_ENTRIES+=("{\"path\":\"$folder\",\"environment\":\"$ENV_NAME\"}")
+          fi
+        done
+
+        # Join all entries into a JSON array and wrap it in a 'config' object
+        MATRIX_JSON=$(IFS=, ; echo "${MATRIX_ENTRIES[*]}")
+        MATRIX_JSON="{\"config\":[${MATRIX_JSON}]}"
+        
+        # Wrap the whole JSON string with single quotes
+        FINAL_OUTPUT="'${MATRIX_JSON}'"
+        
+        echo "Generated matrix data: $FINAL_OUTPUT" # Debugging output
+
+        # Set output for the matrix data in the exact format required
+        echo "matrix-data=$FINAL_OUTPUT" >> $GITHUB_OUTPUT
+
+      
+    - name: Debug Matrix Data
+      run: echo "${{ steps.detect-changes.outputs.matrix-data }}"
+
+    - name: Generate Matrix
+      id: create-matrix
+      run: |
+        MATRIX=${{ steps.detect-changes.outputs.matrix-data }}
+        #MATRIX='{"config":[{"path":"environments/production/ec2","environment":"production"},{"path":"environments/staging/ec2","environment":"staging"}]}'
+        echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+    - name: List all changed folders
+      env:
+        ALL_CHANGED_FOLDERS: ${{ steps.changed-files.outputs.all_changed_files }}
+      run: |
+        for file in ${ALL_CHANGED_FOLDERS}; do
+          echo "$file was changed"
+        done
+
+  
+  test-terraform-iac:
+    needs: [detect-changes]
+    strategy:
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-input-data) }}
+        #changed_paths: ${{ fromJSON(needs.detect-changes.outputs.all-changes) }}
+    #if: always()
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
+    #if: contains(fromJSON('["push", "pull_request"]'), github.event_name)
+    runs-on: ubuntu-latest		 #Runner
+    environment: ${{ matrix.config.environment }}
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.9.7"
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+
+    - name: Run Terraform Plan
+      run: |
+          #changed_dirs=$(git diff --name-only ${{ github.event.after }} ${{ github.event.before }} | grep '\.tf$' | grep 'environments/' | cut -d'/' -f1-3 | sort -u)
+          echo "Running terraform plan for environment: ${{ matrix.config.environment }} in path: ${{ matrix.config.path }}"
+          cd ${{ matrix.config.path }}
+          terraform init
+          terraform validate
+          terraform plan -detailed-exitcode -out=tfplan
+          cd - # Go back to the root directory after each plan
+
+
+    - name: uplaod tfplan files artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: all-changed-folders-${{ strategy.job-index }}
+        include-hidden-files: true
+        #retention-days: 5
+        path: |
+          ${{ matrix.config.path  }}/tfplan
+          ${{ matrix.config.path  }}/.terraform
+          ${{ matrix.config.path  }}/.terraform.lock.hcl
+            
+
+
+  deploy-terraform-iac:
+    needs: [detect-changes, test-terraform-iac]
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'pull_request' }}
+    strategy:
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-input-data) }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.9.7"
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - uses: actions/download-artifact@v4
+      with:
+        path: environments/
+        merge-multiple: true
+
+
+    - name: Run Terraform Apply
+      run: |
+          echo "Running terraform apply for environment: ${{ matrix.config.environment }} in path: ${{ matrix.config.path }}"
+          cd ${{ matrix.config.path }}
+          chmod -R +x .terraform/* 
+          terraform apply --auto-approve -input=false tfplan
+          cd - # Go back to the root directory after each plan
+
+
