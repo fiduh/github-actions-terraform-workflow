@@ -1,7 +1,11 @@
 name:  Terraform Workflow   					#workflow
 on:                                   
   push: {}
-  pull_request: {}
+  pull_request:
+    types:
+      - closed
+    branches:
+      - 'main'
   workflow_dispatch : {}
 
 permissions:
@@ -139,7 +143,7 @@ jobs:
 
   deploy-terraform-iac:
     needs: [detect-changes, test-terraform-iac]
-    if: ${{ github.ref == 'refs/heads/main' && github.event.pull_request.merged == true }}
+    if: github.event.pull_request.merged == true
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-input-data) }}
     runs-on: ubuntu-latest
