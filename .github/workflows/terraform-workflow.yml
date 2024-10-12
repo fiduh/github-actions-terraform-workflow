@@ -174,7 +174,8 @@ jobs:
       run: |
           echo "Running terraform apply for environment: ${{ matrix.config.environment }} in path: ${{ matrix.config.path }}"
           cd ${{ matrix.config.path }}
-          chmod -R +x .terraform/* 
+          ls -a
+          #chmod -R +x .terraform/* 
           terraform apply --auto-approve -input=false tfplan
           cd - # Go back to the root directory after each plan
 
