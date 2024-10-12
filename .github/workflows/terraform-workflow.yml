@@ -147,7 +147,7 @@ jobs:
 
   deploy-terraform-iac:
     needs: [detect-changes, test-terraform-iac]
-    if: github.event.pull_request.merged == true && github.event_name != 'pull_request'
+    if: github.event.pull_request.merged == true
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-input-data) }}
     runs-on: ubuntu-latest
