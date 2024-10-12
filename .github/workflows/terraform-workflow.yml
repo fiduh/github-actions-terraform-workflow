@@ -4,8 +4,6 @@ on:
   pull_request:
     types:
       - closed
-    branches:
-      - 'main'
   workflow_dispatch : {}
 
 permissions:
@@ -143,7 +141,7 @@ jobs:
 
   deploy-terraform-iac:
     needs: [detect-changes, test-terraform-iac]
-    if: ${{github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, 'Merge pull request')}}
+    if: github.event.pull_request.merged == true
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-input-data) }}
     runs-on: ubuntu-latest
