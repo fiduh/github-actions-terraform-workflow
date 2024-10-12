@@ -165,9 +165,9 @@ jobs:
         aws-region: ${{ secrets.AWS_REGION }}
 
     - uses: actions/download-artifact@v4
-      with:
-        path: ${{ matrix.config.path }}/
-        merge-multiple: true
+      # with:
+      #   path: environments/
+      #   merge-multiple: true
 
     - name: List All files and subfolder files
       run: |
