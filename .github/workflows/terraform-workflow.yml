@@ -1,6 +1,9 @@
 name:  Terraform Workflow   					#workflow
 on:                                   
-  push: {}
+  push:
+    branches:
+      - '**'
+      - '!main'
   pull_request:
     types:
       - closed
