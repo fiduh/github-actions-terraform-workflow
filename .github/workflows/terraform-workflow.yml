@@ -131,7 +131,8 @@ jobs:
     - name: uplaod tfplan files artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: all-changed-folders-${{ strategy.job-index }}
+        #name: all-changed-folders-in-${{ matrix.config.environment }}-${{ strategy.job-index }}
+        name: ${{ matrix.config.path }}
         include-hidden-files: true
         #retention-days: 5
         path: |
@@ -164,10 +165,12 @@ jobs:
         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
         aws-region: ${{ secrets.AWS_REGION }}
 
-    - uses: actions/download-artifact@v4
+    - name: Download artifact for ${{ matrix.config.path }}
+      uses: actions/download-artifact@v4
       with:
         path: ${{ matrix.config.path }}
-        merge-multiple: true
+        name: ${{ matrix.config.path }}
+        # merge-multiple: true
 
     - name: List All files and subfolder files
       run: |
