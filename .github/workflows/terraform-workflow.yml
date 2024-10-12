@@ -131,8 +131,7 @@ jobs:
     - name: uplaod tfplan files artifacts
       uses: actions/upload-artifact@v4
       with:
-        #name: all-changed-folders-in-${{ matrix.config.environment }}-${{ strategy.job-index }}
-        name: ${{ matrix.config.path }}
+        name: all-changed-folders-in-${{ matrix.config.environment }}-${{ strategy.job-index }}
         include-hidden-files: true
         #retention-days: 5
         path: |
@@ -169,7 +168,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: ${{ matrix.config.path }}
-        name: ${{ matrix.config.path }}
+        name: all-changed-folders-in-${{ matrix.config.environment }}-${{ strategy.job-index }}
         # merge-multiple: true
 
     - name: List All files and subfolder files
