@@ -143,7 +143,7 @@ jobs:
 
   deploy-terraform-iac:
     needs: [detect-changes, test-terraform-iac]
-    if: github.event.pull_request.merged == true
+    # if: github.event.pull_request.merged == true
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-input-data) }}
     runs-on: ubuntu-latest
@@ -166,9 +166,14 @@ jobs:
 
     - uses: actions/download-artifact@v4
       with:
-        path: environments/
+        path: ${{ matrix.config.path }}/
         merge-multiple: true
 
+    - name: List All files and subfolder files
+      run: |
+        ls -a
+        ls -LRA
+        find ~ -type f -name '.*'
 
     - name: Run Terraform Apply
       run: |
