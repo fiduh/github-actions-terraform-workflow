@@ -166,7 +166,7 @@ jobs:
 
     - uses: actions/download-artifact@v4
       with:
-        path: environments/
+        path: ${{ matrix.config.path }}
         merge-multiple: true
 
     - name: List All files and subfolder files
@@ -180,7 +180,7 @@ jobs:
           echo "Running terraform apply for environment: ${{ matrix.config.environment }} in path: ${{ matrix.config.path }}"
           cd ${{ matrix.config.path }}
           ls -a
-          chmod -R +x .terraform/* 
+          chmod -R +x ${{ matrix.config.path }}/.terraform/* 
           terraform apply --auto-approve -input=false -lock=false tfplan
           cd - # Go back to the root directory after each plan
 
