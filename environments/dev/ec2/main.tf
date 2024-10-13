@@ -42,6 +42,6 @@ resource "aws_instance" "web" {
   instance_type = "t3.micro"
 
   tags = {
-    Name = "EC2 from GitHub CI from QA"
+    Name = "EC2 from GitHub CI from DEV"
   }
 }

@@ -34,7 +34,7 @@ data "aws_ami" "ubuntu" {
     values = ["hvm"]
   }
 
-  owners = ["099720109477"] # Canonical #more changes here
+  owners = ["099720109477"] # Canonical #more changes he
 }
 
 resource "aws_instance" "web" {
@@ -42,6 +42,6 @@ resource "aws_instance" "web" {
   instance_type = "t3.micro"
 
   tags = {
-    Name = "EC2 from GitHub CI from QA"
+    Name = "EC2 from GitHub CI from Staging"
   }
 }
