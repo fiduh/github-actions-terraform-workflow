@@ -23,7 +23,7 @@ jobs:
     outputs:
       all-changes: ${{ steps.changed-files.outputs.all_changed_files }}
       matrix-input-data: ${{ steps.create-matrix.outputs.matrix }}
-      all-delete-changes: ${{ steps.changed-files.outputs.deleted_files}}
+      all-delete-changes: ${{ steps.changed-files.outputs.deleted_files }}
     
     steps:
     - name: Checkout Repo
