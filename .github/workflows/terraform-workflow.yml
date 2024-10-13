@@ -23,6 +23,7 @@ jobs:
     outputs:
       all-changes: ${{ steps.changed-files.outputs.all_changed_files }}
       matrix-input-data: ${{ steps.create-matrix.outputs.matrix }}
+      all-delete-changes: ${{ steps.changed-files.outputs.deleted_files }}
     
     steps:
     - name: Checkout Repo
@@ -37,6 +38,7 @@ jobs:
             environments/**.tf
         dir_names: true
         matrix: true
+        dir_names_deleted_files_include_only_deleted_dirs: true
     
     
     
@@ -91,6 +93,14 @@ jobs:
       run: |
         for file in ${ALL_CHANGED_FOLDERS}; do
           echo "$file was changed"
+        done
+
+    - name: List all deleted folders
+      env:
+        ALL_DELETED_FILES: ${{ steps.changed-files.outputs.deleted_files }}
+      run: |
+        for file in ${ALL_DELETED_FILES}; do
+          echo "$file was deleted"
         done
 
   
@@ -192,3 +202,76 @@ jobs:
           cd - # Go back to the root directory after each plan
 
 
+
+
+
+# Loop through deleted folders and append cleanup jobs to the template
+  test-terraform-cleanup:
+    needs: [detect-changes]
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch the entire git history to ensure we have access to previous commits
+
+    - name: List all changed files
+      env:
+        ALL_DELETED_FILES: ${{ needs.detect-changes.outputs.all-delete-changes }}
+      run: |
+        for file in ${ALL_DELETED_FILES}; do
+          echo "$file was deleted"
+        done
+
+    - name: Get changed files
+      id: changed-files
+      uses: tj-actions/changed-files@v45
+      with:
+        dir_names: true  # Set to true to capture all file changes
+        dir_names_deleted_files_include_only_deleted_dirs: true  # Set to true to capture deleted files
+    
+    - name: Identify deleted folders
+      id: deleted-folders
+      run: |
+        deleted_folders=$(echo "${{ steps.changed-files.outputs.deleted_files }}" | awk -F'/' '{print $1}' | sort | uniq)
+        echo "Deleted folders: $deleted_folders"
+
+    - name: Debug List deleted files
+      run: |
+        echo "Deleted files:"
+        echo "${{ steps.changed-files.outputs.deleted_files }}"
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.9.7"
+
+    - name: Get the previous commit SHA
+      id: previous-commit
+      run: |
+        PREVIOUS_SHA=$(git rev-parse HEAD^1)
+        echo "PREVIOUS_SHA=$PREVIOUS_SHA" >> $GITHUB_ENV
+
+    - name: Checkout previous commit (overwrite current code)
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ env.PREVIOUS_SHA }}
+
+    # - name: Configure AWS credentials
+    #   uses: aws-actions/configure-aws-credentials@v2
+    #   with:
+    #     role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+    #     aws-region: ${{ secrets.AWS_REGION }}
+    
+    
+
+    - name: Run Terraform Plan -destroy
+      run: |
+          echo "terraform detroy testing"
+          ls -LRA
+          # cd deleted_folder
+          # terraform init
+          # terraform validate
+          # terraform plan -destroy -detailed-exitcode -out=tfplan
+          # cd - # Go back to the root directory after each plan
