@@ -97,7 +97,7 @@ jobs:
 
     - name: List all deleted folders
       env:
-        ALL_DELETED_FILES: ${{ steps.changed-files.outputs.deleted_files }}
+        ALL_DELETED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
       run: |
         for file in ${ALL_DELETED_FILES}; do
           echo "$file was deleted"
@@ -223,16 +223,24 @@ jobs:
         for file in ${ALL_DELETED_FILES}; do
           echo "$file was deleted"
         done
-        
+
     - name: Get changed files
       id: changed-files
       uses: tj-actions/changed-files@v45
+      with:
+          dir_names: true  # Set to true to capture all file changes
+          dir_names_deleted_files_include_only_deleted_dirs: true  # Set to true to capture deleted files
     
     - name: Identify deleted folders
       id: deleted-folders
       run: |
         deleted_folders=$(echo "${{ steps.changed-files.outputs.deleted_files }}" | awk -F'/' '{print $1}' | sort | uniq)
         echo "Deleted folders: $deleted_folders"
+
+    - name: Debug List deleted files
+      run: |
+        echo "Deleted files:"
+        echo "${{ steps.changed-files.outputs.deleted_files }}"
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
