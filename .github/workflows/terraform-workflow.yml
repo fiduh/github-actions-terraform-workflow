@@ -23,7 +23,7 @@ jobs:
     outputs:
       all-changes: ${{ steps.changed-files.outputs.all_changed_files }}
       matrix-input-data: ${{ steps.create-matrix.outputs.matrix }}
-      ##all-delete-changes: ${{ steps.changed-files.outputs.deleted_files}}
+      all-delete-changes: ${{ steps.changed-files.outputs.deleted_files}}
     
     steps:
     - name: Checkout Repo
@@ -218,19 +218,28 @@ jobs:
       with:
         terraform_version: "1.9.7"
 
+    - name: Get the previous commit
+      id: previous-commit
+      run: echo "PREVIOUS_SHA=$(git rev-parse HEAD^1)" >> $GITHUB_ENV
+
+    - name: Checkout previous commit
+      uses: actions/checkout@v3
+      with:
+        ref: ${{ env.PREVIOUS_SHA }}
+
     # - name: Configure AWS credentials
     #   uses: aws-actions/configure-aws-credentials@v2
     #   with:
     #     role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
     #     aws-region: ${{ secrets.AWS_REGION }}
     
-    # - name: List all changed files
-    #   env:
-    #     ALL_DELETED_FILES: ${{ fromJson(needs.detect-changes.outputs.all-delete-changes) }}
-    #   run: |
-    #     for file in ${ALL_DELETED_FILES}; do
-    #       echo "$file was deleted"
-    #     done
+    - name: List all changed files
+      env:
+        ALL_DELETED_FILES: ${{ needs.detect-changes.outputs.all-delete-changes }}
+      run: |
+        for file in ${ALL_DELETED_FILES}; do
+          echo "$file was deleted"
+        done
 
     - name: Run Terraform Plan -destroy
       run: |
