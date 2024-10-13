@@ -23,6 +23,7 @@ jobs:
     outputs:
       all-changes: ${{ steps.changed-files.outputs.all_changed_files }}
       matrix-input-data: ${{ steps.create-matrix.outputs.matrix }}
+      all-delete-changes: ${{ steps.changed-files.outputs.deleted_files}}
     
     steps:
     - name: Checkout Repo
@@ -37,6 +38,7 @@ jobs:
             environments/**.tf
         dir_names: true
         matrix: true
+        dir_names_deleted_files_include_only_deleted_dirs: true
     
     
     
@@ -129,7 +131,6 @@ jobs:
           terraform init
           terraform validate
           terraform plan -detailed-exitcode -out=tfplan
-          terraform destroy -auto-approve
           cd - # Go back to the root directory after each plan
 
 
@@ -193,3 +194,42 @@ jobs:
           cd - # Go back to the root directory after each plan
 
 
+
+
+
+# Loop through deleted folders and append cleanup jobs to the template
+  test-terraform-cleanup:
+    needs: [detect-changes]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.9.7"
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ secrets.AWS_REGION }}
+    
+    - name: List all changed files
+      env:
+        ALL_DELETED_FILES: ${{ fromJson(needs.detect-changes.outputs.all-delete-changes) }}
+      run: |
+        for file in ${ALL_DELETED_FILES}; do
+          echo "$file was deleted"
+        done
+
+    - name: Run Terraform Plan -destroy
+      run: |
+          echo "terraform detroy testing"
+          ls -LRA
+          # cd deleted_folder
+          # terraform init
+          # terraform validate
+          # terraform plan -destroy -detailed-exitcode -out=tfplan
+          # cd - # Go back to the root directory after each plan
