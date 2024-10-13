@@ -14,7 +14,7 @@ terraform {
   backend "s3" {
     bucket = "brains-backend"
     region = "us-east-1"
-    key    = "environments/staging/ec2/terraform.tfstate"
+    key    = "environments/qa/ec2/terraform.tfstate"
     dynamodb_table = "dynamodb_lock"
     encrypt        = true
   }
