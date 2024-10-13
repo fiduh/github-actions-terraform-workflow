@@ -210,8 +210,11 @@ jobs:
     needs: [detect-changes]
     runs-on: ubuntu-latest
     steps:
+
     - name: Checkout Repo
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch the entire git history to ensure we have access to previous commits
 
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
