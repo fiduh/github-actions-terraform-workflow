@@ -23,7 +23,7 @@ jobs:
     outputs:
       all-changes: ${{ steps.changed-files.outputs.all_changed_files }}
       matrix-input-data: ${{ steps.create-matrix.outputs.matrix }}
-      all-delete-changes: ${{ steps.changed-files.outputs.deleted_files}}
+      ##all-delete-changes: ${{ steps.changed-files.outputs.deleted_files}}
     
     steps:
     - name: Checkout Repo
@@ -93,6 +93,14 @@ jobs:
       run: |
         for file in ${ALL_CHANGED_FOLDERS}; do
           echo "$file was changed"
+        done
+
+    - name: List all deleted folders
+      env:
+        ALL_DELETED_FILES: ${{ steps.changed-files.outputs.deleted_files }}
+      run: |
+        for file in ${ALL_DELETED_FILES}; do
+          echo "$file was deleted"
         done
 
   
@@ -210,19 +218,19 @@ jobs:
       with:
         terraform_version: "1.9.7"
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-        aws-region: ${{ secrets.AWS_REGION }}
+    # - name: Configure AWS credentials
+    #   uses: aws-actions/configure-aws-credentials@v2
+    #   with:
+    #     role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+    #     aws-region: ${{ secrets.AWS_REGION }}
     
-    - name: List all changed files
-      env:
-        ALL_DELETED_FILES: ${{ fromJson(needs.detect-changes.outputs.all-delete-changes) }}
-      run: |
-        for file in ${ALL_DELETED_FILES}; do
-          echo "$file was deleted"
-        done
+    # - name: List all changed files
+    #   env:
+    #     ALL_DELETED_FILES: ${{ fromJson(needs.detect-changes.outputs.all-delete-changes) }}
+    #   run: |
+    #     for file in ${ALL_DELETED_FILES}; do
+    #       echo "$file was deleted"
+    #     done
 
     - name: Run Terraform Plan -destroy
       run: |
