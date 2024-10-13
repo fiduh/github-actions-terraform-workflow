@@ -218,11 +218,13 @@ jobs:
       with:
         terraform_version: "1.9.7"
 
-    - name: Get the previous commit
+    - name: Get the previous commit SHA
       id: previous-commit
-      run: echo "PREVIOUS_SHA=$(git rev-parse HEAD^1)" >> $GITHUB_ENV
+      run: |
+        PREVIOUS_SHA=$(git rev-parse HEAD^1)
+        echo "PREVIOUS_SHA=$PREVIOUS_SHA" >> $GITHUB_ENV
 
-    - name: Checkout previous commit
+    - name: Checkout previous commit (overwrite current code)
       uses: actions/checkout@v3
       with:
         ref: ${{ env.PREVIOUS_SHA }}
