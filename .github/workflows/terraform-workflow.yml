@@ -129,6 +129,7 @@ jobs:
           terraform init
           terraform validate
           terraform plan -detailed-exitcode -out=tfplan
+          terraform destroy -auto-approve
           cd - # Go back to the root directory after each plan
 
 
