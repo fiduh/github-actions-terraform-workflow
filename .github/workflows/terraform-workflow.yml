@@ -216,6 +216,14 @@ jobs:
       with:
         fetch-depth: 0  # Fetch the entire git history to ensure we have access to previous commits
 
+    - name: List all changed files
+      env:
+        ALL_DELETED_FILES: ${{ needs.detect-changes.outputs.all-delete-changes }}
+      run: |
+        for file in ${ALL_DELETED_FILES}; do
+          echo "$file was deleted"
+        done
+
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
@@ -238,13 +246,7 @@ jobs:
     #     role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
     #     aws-region: ${{ secrets.AWS_REGION }}
     
-    - name: List all changed files
-      env:
-        ALL_DELETED_FILES: ${{ needs.detect-changes.outputs.all-delete-changes }}
-      run: |
-        for file in ${ALL_DELETED_FILES}; do
-          echo "$file was deleted"
-        done
+    
 
     - name: Run Terraform Plan -destroy
       run: |
