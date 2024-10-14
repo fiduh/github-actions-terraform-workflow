@@ -320,10 +320,10 @@ jobs:
           echo "Running terraform plan -destroy for environment: ${{ matrix.config.environment }} in path: ${{ matrix.config.path }}"
           ls -LRA
           cd ${{ matrix.config.path }}
-          # terraform init
-          # terraform validate
-          # terraform plan -destroy -detailed-exitcode -out=tfplan
-          # cd - # Go back to the root directory after each plan
+          terraform init
+          terraform validate
+          terraform plan -destroy -detailed-exitcode -out=tfplan
+          cd - # Go back to the root directory after each plan
 
 
     - name: uplaod tfplan files artifacts
