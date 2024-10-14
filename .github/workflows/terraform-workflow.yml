@@ -336,3 +336,50 @@ jobs:
           ${{ matrix.config.path  }}/tfplan
           ${{ matrix.config.path  }}/.terraform
           ${{ matrix.config.path  }}/.terraform.lock.hcl
+
+
+  destroy-terraform-iac:
+    needs: [detect-changes, test-terraform-cleanup]
+    #if: github.ref == 'refs/heads/main'
+    #if: github.event.pull_request.merged == true
+    strategy:
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-delete-data) }}
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.config.environment }}
+
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.9.7"
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Download artifact for ${{ matrix.config.path }}
+      uses: actions/download-artifact@v4
+      with:
+        path: ${{ matrix.config.path }}
+        name: all-deleted-folders-in-${{ matrix.config.environment }}-${{ strategy.job-index }}
+        # merge-multiple: true
+
+    - name: List All files and subfolder files
+      run: |
+        ls -a
+        ls -LRA
+        find ~ -type f -name '.*'
+
+    - name: Run Terraform Apply
+      run: |
+          echo "Running terraform apply for environment: ${{ matrix.config.environment }} in path: ${{ matrix.config.path }}"
+          cd ${{ matrix.config.path }}
+          ls -a
+          chmod -R +x .terraform/* 
+          terraform apply -auto-approve -input=false -destroy tfplan
+          cd - # Go back to the root directory after each plan
