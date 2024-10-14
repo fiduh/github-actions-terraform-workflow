@@ -24,6 +24,7 @@ jobs:
       all-changes: ${{ steps.changed-files.outputs.all_changed_files }}
       matrix-input-data: ${{ steps.create-matrix.outputs.matrix }}
       all-delete-changes: ${{ steps.changed-files.outputs.deleted_files }}
+      matrix-delete-data: ${{ steps.create-delete-matrix.outputs.delete-matrix }}
     
     steps:
     - name: Checkout Repo
@@ -76,9 +77,48 @@ jobs:
         # Set output for the matrix data in the exact format required
         echo "matrix-data=$FINAL_OUTPUT" >> $GITHUB_OUTPUT
 
+
+
+    - name: Detect Deleted Folders
+      id: detect-deleted-folders
+      run: |
+        MATRIX_ENTRIES=()
+
+        # Get the output of changed folders
+        CHANGED_FOLDERS="${{ steps.changed-files.outputs.deleted_files }}"
+        echo "Raw changed folders output: $CHANGED_FOLDERS"
+
+        # Remove square brackets and split the folders into an array
+        CLEANED_CHANGED_FOLDERS="${CHANGED_FOLDERS//[\[\]]/}"
+        IFS=',' read -r -a CHANGED_FOLDERS_ARRAY <<< "$CLEANED_CHANGED_FOLDERS"
+
+        # Loop through the cleaned folders and build matrix entries
+        for folder in "${CHANGED_FOLDERS_ARRAY[@]}"; do
+          folder=$(echo "$folder" | xargs) # Trim whitespace
+          if [[ -n "$folder" ]]; then
+            ENV_NAME=$(basename "$(dirname "$folder")") # Extract the environment name from the path
+            MATRIX_ENTRIES+=("{\"path\":\"$folder\",\"environment\":\"$ENV_NAME\"}")
+          fi
+        done
+
+        # Join all entries into a JSON array and wrap it in a 'config' object
+        MATRIX_JSON=$(IFS=, ; echo "${MATRIX_ENTRIES[*]}")
+        MATRIX_JSON="{\"config\":[${MATRIX_JSON}]}"
+        
+        # Wrap the whole JSON string with single quotes
+        FINAL_OUTPUT="'${MATRIX_JSON}'"
+        
+        echo "Generated matrix data for deleted folders: $FINAL_OUTPUT" # Debugging output
+
+        # Set output for the matrix data in the exact format required
+        echo "matrix-data-deleted-folders=$FINAL_OUTPUT" >> $GITHUB_OUTPUT
+
       
     - name: Debug Matrix Data
       run: echo "${{ steps.detect-changes.outputs.matrix-data }}"
+
+    - name: Debug Deleted Folder Matrix Data
+      run: echo "${{ steps.detect-deleted-folders.outputs.matrix-data-deleted-folders }}"
 
     - name: Generate Matrix
       id: create-matrix
@@ -86,6 +126,12 @@ jobs:
         MATRIX=${{ steps.detect-changes.outputs.matrix-data }}
         #MATRIX='{"config":[{"path":"environments/production/ec2","environment":"production"},{"path":"environments/staging/ec2","environment":"staging"}]}'
         echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+    - name: Generate Deleted Folders Matrix
+      id: create-delete-matrix
+      run: |
+        MATRIX=${{ steps.detect-changes.outputs.all-delete-changes }}
+        echo "delete-matrix=$MATRIX" >> $GITHUB_OUTPUT
 
     - name: List all changed folders
       env:
@@ -208,7 +254,10 @@ jobs:
 # Loop through deleted folders and append cleanup jobs to the template
   test-terraform-cleanup:
     needs: [detect-changes]
+    strategy:
+      matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-delete-data) }}
     runs-on: ubuntu-latest
+    environment: ${{ matrix.config.environment }}
     steps:
 
     - name: Checkout Repo
@@ -258,20 +307,32 @@ jobs:
       with:
         ref: ${{ env.PREVIOUS_SHA }}
 
-    # - name: Configure AWS credentials
-    #   uses: aws-actions/configure-aws-credentials@v2
-    #   with:
-    #     role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-    #     aws-region: ${{ secrets.AWS_REGION }}
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ secrets.AWS_REGION }}
     
     
 
     - name: Run Terraform Plan -destroy
       run: |
-          echo "terraform detroy testing"
+          echo "Running terraform plan -destroy for environment: ${{ matrix.config.environment }} in path: ${{ matrix.config.path }}"
           ls -LRA
-          # cd deleted_folder
+          cd ${{ matrix.config.path }}
           # terraform init
           # terraform validate
           # terraform plan -destroy -detailed-exitcode -out=tfplan
           # cd - # Go back to the root directory after each plan
+
+
+    - name: uplaod tfplan files artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: all-deleted-folders-in-${{ matrix.config.environment }}-${{ strategy.job-index }}
+        include-hidden-files: true
+        #retention-days: 5
+        path: |
+          ${{ matrix.config.path  }}/tfplan
+          ${{ matrix.config.path  }}/.terraform
+          ${{ matrix.config.path  }}/.terraform.lock.hcl
