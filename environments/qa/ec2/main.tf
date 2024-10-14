@@ -14,7 +14,7 @@ terraform {
   backend "s3" {
     bucket = "brains-backend"
     region = "us-east-1"
-    key    = "environments/production/ec2/terraform.tfstate"
+    key    = "environments/qa/ec2/terraform.tfstate"
     dynamodb_table = "dynamodb_lock"
     encrypt        = true
   }
@@ -34,7 +34,7 @@ data "aws_ami" "ubuntu" {
     values = ["hvm"]
   }
 
-  owners = ["099720109477"] # Canonical #more changes he
+  owners = ["099720109477"] # Canonical #more changes here
 }
 
 resource "aws_instance" "web" {
@@ -42,6 +42,6 @@ resource "aws_instance" "web" {
   instance_type = "t3.micro"
 
   tags = {
-    Name = "EC2 from GitHub CI from production"
+    Name = "EC2 from GitHub CI from QA"
   }
 }
