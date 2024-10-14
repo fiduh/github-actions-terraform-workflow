@@ -130,12 +130,12 @@ jobs:
     - name: Generate Deleted Folders Matrix
       id: create-delete-matrix
       run: |
-        MATRIX=${{ steps.detect-deleted-folders.outputs.all-delete-changes }}
+        MATRIX=${{ steps.detect-deleted-folders.outputs.matrix-data-deleted-folders }}
         echo "delete-matrix=$MATRIX" >> $GITHUB_OUTPUT
 
     - name: List all changed folders
       env:
-        ALL_CHANGED_FOLDERS: ${{ steps.changed-files.outputs.matrix-data-deleted-folders }}
+        ALL_CHANGED_FOLDERS: ${{ steps.changed-files.outputs.all_changed_files }}
       run: |
         for file in ${ALL_CHANGED_FOLDERS}; do
           echo "$file was changed"
