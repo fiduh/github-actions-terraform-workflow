@@ -25,6 +25,8 @@ jobs:
       matrix-input-data: ${{ steps.create-matrix.outputs.matrix }}
       all-delete-changes: ${{ steps.changed-files.outputs.deleted_files }}
       matrix-delete-data: ${{ steps.create-delete-matrix.outputs.delete-matrix }}
+      is-files-changed: ${{ steps.changed-files.outputs.only_changed }}
+      is-folder-deleted: ${{ steps.changed-files.outputs.only_deleted}}
     
     steps:
     - name: Checkout Repo
@@ -151,7 +153,7 @@ jobs:
 
   
   test-terraform-iac:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && needs.detect-changes.outputs.is-files-changed == true
     needs: [detect-changes]
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-input-data) }}
@@ -203,7 +205,7 @@ jobs:
 
   deploy-terraform-iac:
     needs: [detect-changes, test-terraform-iac]
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.detect-changes.outputs.is-files-changed == true
     #if: github.event.pull_request.merged == true
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-input-data) }}
@@ -253,6 +255,7 @@ jobs:
 
 # Loop through deleted folders and append cleanup jobs to the template
   test-terraform-cleanup:
+    if: github.event_name != 'pull_request' && needs.detect-changes.outputs.is-folder-deleted == true
     needs: [detect-changes]
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-delete-data) }}
@@ -340,8 +343,7 @@ jobs:
 
   destroy-terraform-iac:
     needs: [detect-changes, test-terraform-cleanup]
-    #if: github.ref == 'refs/heads/main'
-    #if: github.event.pull_request.merged == true
+    if: github.ref == 'refs/heads/main' && needs.detect-changes.outputs.is-folder-deleted == true
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-delete-data) }}
     runs-on: ubuntu-latest
