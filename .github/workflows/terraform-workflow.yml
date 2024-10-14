@@ -255,7 +255,7 @@ jobs:
 
 # Loop through deleted folders and append cleanup jobs to the template
   test-terraform-cleanup:
-    if: ${{ github.event_name != 'pull_request' && needs.detect-changes.outputs.is-folder-deleted != 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.detect-changes.outputs.matrix-delete-data != 'config' }}
     needs: [detect-changes]
     strategy:
       matrix: ${{ fromJson(needs.detect-changes.outputs.matrix-delete-data) }}
