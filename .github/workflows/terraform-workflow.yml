@@ -25,8 +25,8 @@ jobs:
       matrix-input-data: ${{ steps.create-matrix.outputs.matrix }}
       all-delete-changes: ${{ steps.changed-files.outputs.deleted_files }}
       matrix-delete-data: ${{ steps.create-delete-matrix.outputs.delete-matrix }}
-      is-files-changed: ${{ steps.changed-files.outputs.only_changed }}
-      is-folder-deleted: ${{ steps.changed-files.outputs.only_deleted}}
+      is-files-changed: ${{ steps.changed-files.outputs.any_changed }}
+      is-folder-deleted: ${{ steps.changed-files.outputs.any_deleted}}
     
     steps:
     - name: Checkout Repo
